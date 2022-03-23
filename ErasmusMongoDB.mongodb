@@ -1,0 +1,134 @@
+use Erasmus /* Creo il database */
+
+
+
+//view dalla quale ho creato il file .json
+mysqle view Mongo_Export as  select STUDENTE.CF, STUDENTE.Nome, STUDENTE.Cognome, STUDENTE.Media, STUDENTE.Corso, STUDENTE.Facolta, STUDENTE.Universita, STUDENTE.Erasmus, STUDENTE.PosizioneErasmus, GRADUATORIA.Punteggio, GRADUATORIA.Risultato, GRADUATORIA.LearningAgreement, GRADUATORIA.Alloggio, GRADUATORIA.Commissione, LEARNINGAGREEMENT.Corso as CorsoScelto, LEARNINGAGREEMENT.Facolta as FacoltaScelta, LEARNINGAGREEMENT.Universita as UniScelta, LEARNINGAGREEMENT.DataInizio, LEARNINGAGREEMENT.DataFine
+from STUDENTE, GRADUATORIA, LEARNINGAGREEMENT
+where STUDENTE.Erasmus = GRADUATORIA.ID and STUDENTE.PosizioneErasmus = GRADUATORIA.Posizione and GRADUATORIA.LearningAgreement = LEARNINGAGREEMENT.ID;
+
+
+//comando import
+mongoimport -d Erasmus -c Studente --type json --file /Users/Andrea/Desktop/mongo_export.json --jsonArray
+
+
+//Esempio query
+db.Studente.find({CF: 'CCNDR98P07H501O'}).pretty()
+
+//Esempio insert
+> db.Studente.insert({
+...    "CF" : "CCCSMN01H501O",
+...    "Nome" : "Simone",
+...    "Cognome" : "Ciccotti",
+...    "Media" : 25.0,
+...    "Corso" : "MAT02",
+...    "Facolta" : "Facolta di Scienza Matematiche, Fisiche e Naturali",
+...    "Universita" : 1,
+...    "Erasmus" : 1,
+...    "PosizioneErasmus" : 3,
+...    "Punteggio" : 90,
+...    "Risultato" : "Vincitore",
+...    "LearnigAgreeement" : 2,
+...    "Alloggio" : "Copenhagen Hostel",
+...    "Commissione" : 5,
+...    "CorsoScelto" : "MAT02",
+...    "FacoltaScelta" : "Facolta di Scienze Matematiche, Fisiche e Naturali",
+...    "UniScelta" : 5,
+...    "DataInizio" : "2019-09-01",
+...    "DataFine" : "2020-03-01"
+... })
+WriteResult({ "nInserted" : 1 })
+
+
+db.Studente.find({CF:'CCCSMN01H501O'}).pretty()
+
+//Esempio update
+> db.Studente.update(
+...   {CF : "CCCSMN01H501O"},
+...   {
+...     "CF" : "CCCSMN01H501O",
+...     "Nome" : "Simone",
+...     "Cognome" : "Ciccotti",
+...     "Media" : 24.5,
+...     "Corso" : "MAT02",
+...     "Facolta" : "Facolta di Scienza Matematiche, Fisiche e Naturali",
+...     "Universita" : 1,
+...     "Erasmus" : 1,
+...     "PosizioneErasmus" : 3,
+...     "Punteggio" : 90,
+...     "Risultato" : "Vincitore",
+...     "LearnigAgreeement" : 2,
+...     "Alloggio" : "Copenhagen Hostel",
+...     "Commissione" : 5,
+...     "CorsoScelto" : "MAT02",
+...     "FacoltaScelta" : "Facolta di Scienze Matematiche, Fisiche e Naturali",
+...     "UniScelta" : 5,
+...     "DataInizio" : "2019-09-01",
+...     "DataFine" : "2020-03-01"
+...   }
+... )
+WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })
+
+db.Studente.find({CF:'CCCSMN01H501O'}).pretty()
+
+//Esempio remove
+db.Studente.remove({CF:'CCCSMN01H501O'})
+WriteResult({ "nRemoved" : 1 })
+> db.Studente.find({CF:'CCCSMN01H501O'}).pretty()
+
+
+//1.	Selezionare tutti gli studenti iscritti a un corso della ‘Facolta di Ingegneria’ vincitori di una borsa di studio Erasmus
+> db.Studente.find({
+...   Facolta : "Facolta di Ingegneria",
+...   Risultato: "Vincitore"},
+...   { _id : 0,
+...     CF: 1,
+...     Nome : 1,
+...     Cognome : 1
+...   }).pretty()
+
+//2.	Selezionare tutti gli studenti che sono partiti dopo il 2019/11/01 e sono risultati “Vincitori” ordinandoli per CF.
+> var a = db.Studente.find({});
+> var array = [];
+> for (var i = 0; i < a.length(); i++){
+...   if(a[i].DataInizio > "2019-11-01"){
+...     if(a[i].Risultato == "Vincitore"){
+...       array.push(a[i].CF);
+...     }
+...   }
+... }
+> array.sort()
+
+
+//Confronto MongoDB vs MySQL
+
+
+//1.	Selezionare tutti gli studenti iscritti a un corso della ‘Facolta di Ingegneria’ vincitori di una borsa di studio Erasmus
+
+//MongoDB
+> var inizio = new Date()
+> db.Studente.find({
+...   Facolta : "Facolta di Ingegneria",
+...   Risultato: "Vincitore"},
+...   { _id : 0,
+...     CF: 1,
+...     Nome : 1,
+...     Cognome : 1
+...   }).pretty()
+
+//mysql
+Select STUDENTE.CF, STUDENTE.Nome, STUDENTE.Cognome
+From STUDENTE, GRADUATORIA
+Where STUDENTE.Erasmus = GRADUATORIA.ID and STUDENTE.PosizioneErasmus = GRADUATORIA.Posizione and STUDENTE.Facolta = 'Facolta di Ingegneria' and GRADUATORIA.Risultato = 'Vincitore';
+
+
+//2.	Contare il numero di studenti per ogni Universita ordinando dal più grande al più piccolo
+
+//MongoDB
+> db.Studente.aggregate([{"$group":{"_id":"$Universita","total":{"$sum":1}}},{"$sort":{"total":-1}}])
+
+
+//MySQL
+Select count(STUDENTE.CF) as NumeroStudenti, UNIVERSITA.Unicode
+from STUDENTE, UNIVERSITA
+where STUDENTE.Universita = UNIVERSITA.Unicode group by UNIVERSITA.Unicode order by NumeroStudenti desc;

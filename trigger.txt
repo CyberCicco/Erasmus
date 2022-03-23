@@ -1,0 +1,206 @@
+DELIMITER //
+CREATE TRIGGER TR_LEARNINGAGREEMENT_Data
+       BEFORE INSERT ON LEARNINGAGREEMENT
+       FOR EACH ROW
+       BEGIN
+            IF(new.DataInizio > new.DataFine) then SIGNAL SQLSTATE '45000'
+       SET MESSAGE_TEXT = 'Data inizio > Data fine';
+              END IF;
+       END; //
+DELIMITER;
+
+Insert into LEARNINGAGREEMENT(ID, Corso, Facolta, Universita, DataInizio, DataFine) values (2, 'MAT02', 'Facolta di Scienze Matematiche, Fisiche e Naturali', 5, '2019-09-01', '2019-03-01');
+
+DELIMITER //
+CREATE TRIGGER TR_ESAME_Voto
+       BEFORE INSERT ON ESAME
+       FOR EACH ROW
+       BEGIN
+            IF(new.Voto < 0 OR new.Voto > 31) then SIGNAL SQLSTATE '45000'
+       SET MESSAGE_TEXT = 'Voto inserito non valido';
+             END IF;
+       END; //
+DELIMITER;
+
+
+Insert into ESAME(Materia, Corso, Facolta, Universita, LearningAgreement, Studente, Voto, Data) values ('Algebra', 'MAT02', 'Facolta di Scienze Matematiche, Fisiche e Naturali', 5, 1, 'CCCNDR98P07H501O', 37, '2019-10-07');
+
+
+
+DELIMITER //
+CREATE TRIGGER TR_PROFESSORE_Commissione
+       BEFORE INSERT ON PROFESSORE
+       FOR EACH ROW
+       BEGIN
+           IF(new.Universita != (select COMMISSIONE.Universita from COMMISSIONE where COMMISSIONE.ID = new.Commissione)) then SIGNAL SQLSTATE '45000'
+       SET MESSAGE_TEXT = 'Il professore non può far parte di una commissione di un’altra università diversa dalla propria';
+           END IF;
+    END; //
+DELIMITER ;
+
+
+
+
+
+Insert into PROFESSORE(CF, Nome, Cognome, Qualifica, Mail, Facolta, Universita, Commissione) values ('0LONNS41A59F498T', 'Carlo', 'Costa', 'Ordinario', 'carlocosta@unicopenhagen.com', 'Facoltà di Scienze Matematiche, Fisiche e Naturali', 1, 3);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DELIMITER //
+CREATE TRIGGER TR_STUDENTE_Erasmus
+       BEFORE INSERT ON STUDENTE
+       FOR EACH ROW
+       BEGIN
+           DECLARE LearningAgreementScelto int;
+           DECLARE CorsoScelto varchar(50);
+           DECLARE FacoltaScelta varchar(50);
+           DECLARE UniScelta int;
+           SET LearningAgreementScelto = (select GRADUATORIA.LearningAgreement from GRADUATORIA where GRADUATORIA.ID = new.Erasmus and GRADUATORIA.Posizione = new.PosizioneErasmus);
+           SET CorsoScelto = (select LEARNINGAGREEMENT.Corso from LEARNINGAGREEMENT where LEARNINGAGREEMENT.ID = LearningAgreementScelto);
+           SET FacoltaScelta = (select LEARNINGAGREEMENT.Facolta from LEARNINGAGREEMENT where LEARNINGAGREEMENT.ID = LearningAgreementScelto);
+           SET UniScelta = (select LEARNINGAGREEMENT.Universita from LEARNINGAGREEMENT where LEARNINGAGREEMENT.ID = LearningAgreementSCelto);
+          IF( not exists (select * from COLLABORA where (Corso1 = CorsoScelto and Facolta1 = FacoltaScelta and Universita1 = UniScelta and Corso2 = new.Corso and Facolta2 = new.Facolta and Universita2 = new.Universita) OR  (Corso2 = CorsoScelto and Facolta2 = FacoltaScelta and Universita2 = UniScelta and Corso1 = new.Corso and Facolta1 = new.Facolta and Universita1 = new.Universita))) then SIGNAL SQLSTATE '45000'
+         Set MESSAGE_TEXT = 'Non esiste la collaborazione Erasmus';  
+         End IF;
+END;
+//
+DELIMITER ;
+
+
+
+
+
+
+
+
+Insert into STUDENTE(CF, Matricola, Nome, Cognome, Data, Mail, Isee, CertLing, Media, Anno, Corso, Facolta, Universita, Erasmus, PosizioneErasmus) values ('CCCCCCCCCCCC', '0252525', 'Alessio', 'Frassanito', '1998-07-04', 'alessiofrassanito@gmail.com', 15000, 'B2 Inglese', 26, 2, 'MAT02', 'Facolta di Scienze Matematiche, Fisiche e Naturali', 1, 1, 4);
+
+
+
+
+
+
+
+
+Insert into STUDENTE(CF, Matricola, Nome, Cognome, Data, Mail, Isee, CertLing, Media, Anno, Corso, Facolta, Universita, Erasmus, PosizioneErasmus) values ('CCCCCCCCCCCC', '0252525', 'Alessio', 'Frassanito', '1998-07-04', 'alessiofrassanito@gmail.com', 15000, 'B2 Inglese', 26, 2, 'INF01', 'Facolta di Ingegneria', 1, 3, 98);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DELIMITER //
+CREATE TRIGGER TR_ESAME_Data
+       BEFORE INSERT ON ESAME
+       FOR EACH ROW
+       BEGIN
+       DECLARE DataI Date;
+       DECLARE DataF Date;
+       SET DataI = (select DataInizio from LEARNINGAGREEMENT where LEARNINGAGREEMENT.ID = new.LearningAgreement); 
+       SET DataF = (select DataFine from LEARNINGAGREEMENT where LEARNINGAGREEMENT.ID = new.LearningAgreement); 
+       IF(new.Data not between DataI and DataF) then SIGNAL SQLSTATE '45000'
+              SET MESSAGE_TEXT = 'Data scorretta';
+       End IF;
+END;
+//
+DELIMITER ;
+
+Insert into ESAME(Materia, Corso, Facolta, Universita, LearningAgreement, Studente, Voto, Data) values ('Algebra', 'MAT02', 'Facolta di Scienze Matematiche, Fisiche e Naturali', 5, 1, 'CCCNDR98P07H501O', 30, '2019-10-07');
+
+
+
+DELIMITER //
+CREATE TRIGGER TR_GRADUATORIA_LearningAgreement
+       BEFORE INSERT ON GRADUATORIA
+       FOR EACH ROW
+       BEGIN
+            IF(new.Risultato != "Vincitore") THEN
+                SET new.LearningAgreement = NULL;
+                SET new.Alloggio = NULL;
+            END IF;
+       END;
+//
+DELIMITER ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DROP PROCEDURE IF EXISTS corsoOFuoriCorso;
+delimiter //
+CREATE PROCEDURE corsoOFuoriCorso(IN CF VARCHAR(16), OUT InCorsoOFuoriCorso VARCHAR(50))
+BEGIN
+       DECLARE corso varchar(50); 
+       DECLARE tipologia varchar(50);
+       DECLARE anno int;
+       SELECT STUDENTE.Corso, CORSO.Tipologia, STUDENTE.Anno into corso, tipologia, anno FROM STUDENTE, CORSO WHERE STUDENTE.CF = CF and STUDENTE.Corso = CORSO.Codice and STUDENTE.Facolta = CORSO.Facolta and STUDENTE.Universita = CORSO.Universita;
+       if (tipologia = 'Corso di laurea triennale' and anno > 3) then 
+            set InCorsoOFuoriCorso  = 'Studente triennale fuori corso';
+       End if; 
+       If (tipologia = 'Corso di laurea triennale' and anno < 4) then
+            Set InCorsoOFuoriCorso = 'Studente triennale in corso';
+       End if;
+       If (tipologia = 'Corso di laurea magistrale' and anno > 2) then
+            Set InCorsoOFuoriCorso = 'Studente magistrale fuori corso';
+       End if;
+       If (tipologia = 'Corso di laurea magistrale' and anno < 3) then
+            Set InCorsoOFuoriCorso = 'Studente magistrale in corso';
+       End if;
+END;//
+DELIMITER ;
+CALL corsoOFuoriCorso('CCCNDR98P07H501O', @corso);
+SELECT @corso;
+
+
+           when ( tipologia = 'Corso di laurea triennale' and corso > 3)
+                then 'Studente triennale fuori corso'
+           when (tipologia = 'Corso di laurea triennale' and corso < 4)
+                then  'Studente triennale in corso'
+           when (tipologia = 'Corso di laurea magistrale' and corso > 2)
+                then 'Studente magistrale fuori corso'
+           else 'Studente magistrale in corso';
+
